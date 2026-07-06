@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan 10K Avanzado</title>
+
+<!-- Vinculación de la PWA -->
+<link rel="manifest" href="manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('Service Worker registrado con éxito', reg))
+        .catch(err => console.error('Error al registrar el Service Worker', err));
+    });
+  }
+</script>
+
+<style>
+body{font-family:Arial,sans-serif;max-width:1100px;margin:auto;padding:20px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border:1px solid #ccc;padding:6px}
+input{width:95%}
+.good{background:#d4edda}
+.bad{background:#f8d7da}
+.summary{padding:10px;border:1px solid #ccc;margin:10px 0;position: sticky;top: 0;background: white;z-index: 10;}
+</style>
+</head>
+<body>
+<h1>Plan 10K - Seguimiento Avanzado</h1>
+
+<div class="summary">
+<p><b>Cumplimiento:</b> <span id="cumplimiento">0%</span></p>
+<p><b>Km acumulados:</b> <span id="kms">0</span></p>
+<p><b>Entrenamientos completados:</b> <span id="done">0</span></p>
+<p><b>Peso actual:</b> <input id="peso" type="number" step="0.1" value="64"> kg</p>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Semana</th>
+<th>Día</th>
+<th>Objetivo</th>
+<th>Distancia Obj.</th>
+<th>Distancia Real</th>
+<th>Tiempo (min)</th>
+<th>Ritmo</th>
+<th>Cumplido</th>
+</tr>
+</thead>
+<tbody id="tabla"></tbody>
+</table>
+
+<script>
+const plan=[];
+for(let s=1;s<=24;s++){
+ for(let d=1;d<=3;d++){
+   let obj="Entrenamiento planificado";
+   let km=(s<5)?3.5:(s<9)?4.5:(s<13)?5.5:(s<17)?6.5:(s<21)?7.5:(s<23)?8.5:10;
+   plan.push([s,d,obj,km]);
+ }
+}
+
+const savedData = JSON.parse(localStorage.getItem('plan10k_data')) || {};
+const savedPeso = localStorage.getItem('plan10k_peso') || "64";
+document.getElementById("peso").value = savedPeso;
+
+const tbody=document.getElementById("tabla");
+
+plan.forEach((p,i)=>{
+ let tr=document.createElement("tr");
+ let rowData = savedData[i] || {dist: '', time: '', chk: false};
+ 
+ tr.innerHTML=`
+ <td>${p[0]}</td>
+ <td>${p[1]}</td>
+ <td>${p[2]}</td>
+ <td>${p[3]}</td>
+ <td><input type="number" step="0.01" class="dist" value="${rowData.dist}" data-index="${i}"></td>
+ <td><input type="number" step="0.1" class="time" value="${rowData.time}" data-index="${i}"></td>
+ <td class="pace">-</td>
+ <td><input type="checkbox" class="chk" ${rowData.chk ? 'checked' : ''} data-index="${i}"></td>`;
+ tbody.appendChild(tr);
+});
+
+function update(){
+ let done=0;
+ let kmTotal=0;
+ let dataToSave = {};
+
+ document.querySelectorAll("#tabla tr").forEach((r, idx)=>{
+   const dist=r.querySelector(".dist");
+   const time=r.querySelector(".time");
+   const pace=r.querySelector(".pace");
+   const chk=r.querySelector(".chk");
+
+   let d=parseFloat(dist.value) || 0;
+   let t=parseFloat(time.value) || 0;
+   let c=chk.checked;
+
+   dataToSave[idx] = {dist: dist.value, time: time.value, chk: c};
+
+   if(d>0 && t>0){
+     pace.textContent=(t/d).toFixed(2)+" min/km";
+     kmTotal+=d;
+   } else {
+     pace.textContent="-";
+   }
+
+   if(c) done++;
+   if(c) { r.className = "good"; } else if(d > 0 || t > 0) { r.className = "bad"; } else { r.className = ""; }
+ });
+
+ document.getElementById("done").textContent=done;
+ document.getElementById("kms").textContent=kmTotal.toFixed(1);
+ document.getElementById("cumplimiento").textContent=((done/72)*100).toFixed(1)+"%";
+ 
+ localStorage.setItem('plan10k_data', JSON.stringify(dataToSave));
+ localStorage.setItem('plan10k_peso', document.getElementById("peso").value);
+}
+
+document.addEventListener("input",update);
+document.addEventListener("change",update);
+update();
+</script>
+</body>
+</html>
